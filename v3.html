@@ -11,9 +11,6 @@
 		display:block;
 	}
 </style>
-<script src="https://cdn.WebRTC-Experiment.com/MediaStreamRecorder.js"></script>
-<script src="https://cdn.WebRTC-Experiment.com/ConcatenateBlobs.js"></script>
-
 <script>
 
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
@@ -22,6 +19,8 @@ var profileIds = [];
 var mediaConstraints = {
     audio: true
 };
+
+var context = new (window.AudioContext || window.webkitAudioContext)();
 
 function enrollNewProfile(name){
 	navigator.getUserMedia(mediaConstraints, function(stream){onMediaSuccess(stream, createProfile, 15)}, onMediaError);
@@ -36,24 +35,20 @@ function startListeningForIdentification(){
 }
 
 function onMediaSuccess(stream, callback, secondsOfAudio) {
-	var recorder = new MediaStreamRecorder(stream);
-	var blobs = [];
-	recorder.stream = stream;
-
-	recorder.recorderType = StereoAudioRecorder;
-	recorder.mimeType = 'audio/wav';  
-	recorder.audioChannels = 1;
-	//recorder.sampleRate = 16000; // this is fun.
-
+    var blobs = [];
+        
+    var options = {mimeType: 'audio/wav'};
+    recorder = new MediaRecorder(stream, options);
+    
 	console.log('I\'m listening...');
-    recorder.ondataavailable = function (blob) {
-    	blobs.push(blob);
+    recorder.ondataavailable = function (e) {
+    	blobs.push(e.data);
     };
 
     recorder.onstop = function(){
     	console.log('stopped');
 
-    	ConcatenateBlobs(blobs, blobs[0].type, function(concatenatedBlob) {
+    	ConcatenateBlobs(blobs, 'audio/wav', function(concatenatedBlob) {
 			reSample(concatenatedBlob,16000,callback);
         });    	
     };
@@ -82,8 +77,10 @@ function reSample(blob, targetSampleRate, onComplete) {
 
     bufferSource.connect(offlineContext.destination);
     bufferSource.start(0);
-    offlineContext.startRendering().then(function(renderedBuffer){
-        onComplete(renderedBuffer);
+    offlineContext.startRendering().then(function(renderedBuffer){        
+        var dataView = new DataView(renderedBuffer);
+        var blob = new Blob([dataView], { type: 'audio/wav' });
+        onComplete(blob);
     })
 }
 
@@ -91,10 +88,7 @@ function onMediaError(e) {
     console.error('media error', e);
 }
 
-function identifyProfile(arrayBuffer){
-	var dataView = new DataView(arrayBuffer);
-	var blob = new Blob([dataView], { type: 'audio/wav' });
-
+function identifyProfile(blob){
 	var Ids = profileIds.map(x => x.profileId).join();
 	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
   
@@ -121,10 +115,7 @@ function identifyProfile(arrayBuffer){
 	request.send(blob);
 }
 
-function createProfile(arrayBuffer){
-  var dataView = new DataView(arrayBuffer);
-  var blob = new Blob([dataView], { type: 'audio/wav' });
-
+function createProfile(blob){
   const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
   var request = new XMLHttpRequest();

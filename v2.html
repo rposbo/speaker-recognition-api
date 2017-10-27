@@ -11,90 +11,70 @@
 		display:block;
 	}
 </style>
-<script src="https://cdn.WebRTC-Experiment.com/MediaStreamRecorder.js"></script>
-<script src="https://cdn.WebRTC-Experiment.com/ConcatenateBlobs.js"></script>
-
 <script>
 
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
 var profileIds = [];
 
-var mediaConstraints = {
-    audio: true
-};
+var audio_context;
+var recorder;
+
+// window.onload = function init() {
+//     try {
+//         // webkit shim
+//         window.AudioContext = window.AudioContext || window.webkitAudioContext;
+//         navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+//         window.URL = window.URL || window.webkitURL;
+        
+//         audio_context = new AudioContext;        
+//     } catch (e) {
+//         console.error('No web audio support in this browser!');
+//     }
+
+//     navigator.getUserMedia({audio: true}, startUserMedia, function(e) {
+//         console.log('No live audio input: ' + e);
+//     });
+// };
+
+function startUserMedia(stream) {
+    //var input = audio_context.createMediaStreamSource(stream);
+    recorder = new Recorder({
+        numberOfChannels: 1,
+        encoderSampleRate : 16000,
+        encoderPath: "recorderjs/waveWorker.min.js"
+      });
+
+    //recorder = new Recorder(input, {numChannels:1});
+}
 
 function enrollNewProfile(name){
-	navigator.getUserMedia(mediaConstraints, function(stream){onMediaSuccess(stream, createProfile, 15)}, onMediaError);
+    //ImListening(createProfile, 15);
+    ImListening(downloadBlob, 5);
 }
 
 function startListeningForIdentification(){
 	if (profileIds.length > 0 ){
-		navigator.getUserMedia(mediaConstraints, function(stream){onMediaSuccess(stream, identifyProfile, 10)}, onMediaError);
+		ImListening(identifyProfile, 10);
 	} else {
 		console.log('No profiles enrolled yet! Click the other button...');
 	}
 }
 
-function onMediaSuccess(stream, callback, secondsOfAudio) {
-	var recorder = new MediaStreamRecorder(stream);
-	var blobs = [];
-	recorder.stream = stream;
-
-	recorder.recorderType = StereoAudioRecorder;
-	recorder.mimeType = 'audio/wav';  
-	recorder.audioChannels = 1;
-	//recorder.sampleRate = 16000; // this is fun.
-
-	console.log('I\'m listening...');
-    recorder.ondataavailable = function (blob) {
-    	blobs.push(blob);
-    };
-
-    recorder.onstop = function(){
-    	console.log('stopped');
-
-    	ConcatenateBlobs(blobs, blobs[0].type, function(concatenatedBlob) {
-			reSample(concatenatedBlob,16000,callback);
-        });    	
-    };
-
-    recorder.start(1000);
-
-	setTimeout(() => { recorder.stop(); }, secondsOfAudio*1000);
-}
-
-function reSample(blob, targetSampleRate, onComplete) {
-	let fileReader = new FileReader();
-	let audioBuffer;
-
-	fileReader.onloadend = () => {
-		audioBuffer = fileReader.result;
-	}
-
-	fileReader.readAsArrayBuffer(blob);
-
-    var channel = audioBuffer.numberOfChannels;
-    var samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
-
-    var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
-    var bufferSource = offlineContext.createBufferSource();
-    bufferSource.buffer = audioBuffer;
-
-    bufferSource.connect(offlineContext.destination);
-    bufferSource.start(0);
-    offlineContext.startRendering().then(function(renderedBuffer){
-        onComplete(renderedBuffer);
-    })
+function ImListening(callback, secondsOfAudio) {
+    console.log('I\'m listening');
+    recorder && recorder.record();
+    setTimeout(() => { 
+        console.log('Stopped listening');
+        recorder.stop();         
+        recorder.exportWAV(callback);
+    }, secondsOfAudio*1000);	
 }
 
 function onMediaError(e) {
     console.error('media error', e);
 }
 
-function identifyProfile(arrayBuffer){
-	var dataView = new DataView(arrayBuffer);
-	var blob = new Blob([dataView], { type: 'audio/wav' });
-
+function identifyProfile(blob){
 	var Ids = profileIds.map(x => x.profileId).join();
 	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
   
@@ -121,9 +101,19 @@ function identifyProfile(arrayBuffer){
 	request.send(blob);
 }
 
-function createProfile(arrayBuffer){
-  var dataView = new DataView(arrayBuffer);
-  var blob = new Blob([dataView], { type: 'audio/wav' });
+function downloadBlob(blob){
+    
+    var url = URL.createObjectURL(blob);
+    document.write('<a href=' + url + '>here</a>');
+    var link = window.document.createElement('a');
+    link.href = url;
+    link.download = 'output.wav';
+    var click = document.createEvent("Event");
+    click.initEvent("click", true, true);
+    link.dispatchEvent(click);
+}
+
+function createProfile(blob){
 
   const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
@@ -150,8 +140,7 @@ function enrollProfileAudio(blob, profileId){
   const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles/'+profileId+'/enroll?shortAudio=true';
 
   var request = new XMLHttpRequest();
-  request.open("POST", enroll, true);
-  
+  request.open("POST", enroll, true);;
   request.setRequestHeader('Content-Type','multipart/form-data');
   request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
@@ -270,7 +259,7 @@ function addAudioPlayer(blobUrl){
 	log.parentNode.insertBefore(audio, log);
 }
 
-// stolen from SO
+// stolen from SO - get qs params without jquery
 var qs = (function(a) {
     if (a == "") return {};
     var b = {};
@@ -317,5 +306,6 @@ var key = qs['key'];
 })();
 
 </script>
+<script src="recorder/recorder.min.js"></script>
  </body>
 </html>
