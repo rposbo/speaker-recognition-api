@@ -1,75 +1,14 @@
-<!doctype html>
- <html lang="en">
- <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-	pre#log{
-		height:500px;
-		overflow:auto;
-	}
-	audio {
-		display:block;
-	}
-</style>
-<script>
-
-var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
-var profileIds = [];
-
-var audio_context;
-var recorder;
-
-// window.onload = function init() {
-//     try {
-//         // webkit shim
-//         window.AudioContext = window.AudioContext || window.webkitAudioContext;
-//         navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
-//         window.
-
- = window.URL || window.webkitURL;
-        
-//         audio_context = new AudioContext;        
-//     } catch (e) {
-//         console.error('No web audio support in this browser!');
-//     }
-
-//     navigator.getUserMedia({audio: true}, startUserMedia, function(e) {
-//         console.log('No live audio input: ' + e);
-//     });
-// };
-
-function startUserMedia(stream) {
-    //var input = audio_context.createMediaStreamSource(stream);
-    recorder = new Recorder({
-        numberOfChannels: 1,
-        encoderSampleRate : 16000,
-        encoderPath: "recorderjs/waveWorker.min.js"
-      });
-
-    //recorder = new Recorder(input, {numChannels:1});
-}
 
 function enrollNewProfile(name){
-    //ImListening(createProfile, 15);
-    ImListening(downloadBlob, 5);
+	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createProfile, 15)}, onMediaError);
 }
 
 function startListeningForIdentification(){
 	if (profileIds.length > 0 ){
-		ImListening(identifyProfile, 10);
+		navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, identifyProfile, 10)}, onMediaError);
 	} else {
 		console.log('No profiles enrolled yet! Click the other button...');
 	}
-}
-
-function ImListening(callback, secondsOfAudio) {
-    console.log('I\'m listening');
-    recorder && recorder.record();
-    setTimeout(() => { 
-        console.log('Stopped listening');
-        recorder.stop();         
-        recorder.exportWAV(callback);
-    }, secondsOfAudio*1000);	
 }
 
 function onMediaError(e) {
@@ -77,6 +16,9 @@ function onMediaError(e) {
 }
 
 function identifyProfile(blob){
+	var url = URL.createObjectURL(blob);
+	addAudioPlayer(url);
+
 	var Ids = profileIds.map(x => x.profileId).join();
 	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
   
@@ -103,46 +45,37 @@ function identifyProfile(blob){
 	request.send(blob);
 }
 
-function downloadBlob(blob){
-    
-    var url = URL.createObjectURL(blob);
-    document.write('<a href=' + url + '>here</a>');
-    var link = window.document.createElement('a');
-    link.href = url;
-    link.download = 'output.wav';
-    var click = document.createEvent("Event");
-    click.initEvent("click", true, true);
-    link.dispatchEvent(click);
-}
-
 function createProfile(blob){
+	var url = URL.createObjectURL(blob);
+	addAudioPlayer(url);
 
-  const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
+	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
-  var request = new XMLHttpRequest();
-  request.open("POST", create, true);
-  
-  request.setRequestHeader('Content-Type','application/json');
-  request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+	var request = new XMLHttpRequest();
+		request.open("POST", create, true);
 
-  request.onload = function (oEvent) {
-  	console.log('creating profile');
-  	console.log(request.responseText);
+		request.setRequestHeader('Content-Type','application/json');
+		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
-    var json = JSON.parse(request.responseText);
-    var profileId = json.identificationProfileId;
-	
-    enrollProfileAudio(blob, profileId);
-  };
+		request.onload = function (oEvent) {
+		console.log('creating profile');
+		console.log(request.responseText);
 
-  request.send(JSON.stringify({ 'locale' :'en-us'}));
+		var json = JSON.parse(request.responseText);
+		var profileId = json.identificationProfileId;
+
+		enrollProfileAudio(blob, profileId);
+	};
+
+	request.send(JSON.stringify({ 'locale' :'en-us'}));
 }
 
 function enrollProfileAudio(blob, profileId){
   const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles/'+profileId+'/enroll?shortAudio=true';
 
   var request = new XMLHttpRequest();
-  request.open("POST", enroll, true);;
+  request.open("POST", enroll, true);
+  
   request.setRequestHeader('Content-Type','multipart/form-data');
   request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
@@ -261,7 +194,7 @@ function addAudioPlayer(blobUrl){
 	log.parentNode.insertBefore(audio, log);
 }
 
-// stolen from SO - get qs params without jquery
+// stolen from SO
 var qs = (function(a) {
     if (a == "") return {};
     var b = {};
@@ -277,17 +210,12 @@ var qs = (function(a) {
 })(window.location.search.substr(1).split('&'));
 
 var key = qs['key'];
- </script>
 
- </head>
- <body>
-	 
-<button onclick="enrollNewProfile();">Enroll</button>
-<button onclick="startListeningForIdentification();">Identify</button>
-<pre id="log"></pre>
+// Speaker Recognition API profile configuration
+var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
+var profileIds = [];
 
-<script>
-// stolen from SO - really easy way to dump the console logs to the page
+// Helper functions - stolen from SO: really easy way to dump the console logs to the page
 (function () {
 	var old = console.log;
 	var logger = document.getElementById('log');
@@ -304,10 +232,5 @@ var key = qs['key'];
 		}
 		old(...arguments);
 	}
-	console.error = console.log;
+	console.error = console.log; 
 })();
-
-</script>
-<script src="recorder/recorder.min.js"></script>
- </body>
-</html>

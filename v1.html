@@ -43,7 +43,7 @@ function onMediaSuccess(stream, callback, secondsOfAudio) {
 	recorder.recorderType = StereoAudioRecorder;
 	recorder.mimeType = 'audio/wav';  
 	recorder.audioChannels = 1;
-	//recorder.sampleRate = 16000; // this is fun.
+//	recorder.sampleRate = 16000; // this is fun.
 
 	console.log('I\'m listening...');
     recorder.ondataavailable = function (blob) {
@@ -54,7 +54,7 @@ function onMediaSuccess(stream, callback, secondsOfAudio) {
     	console.log('stopped');
 
     	ConcatenateBlobs(blobs, blobs[0].type, function(concatenatedBlob) {
-			reSample(concatenatedBlob,16000,callback);
+			reSample(concatenatedBlob,16000,secondsOfAudio,callback);
         });    	
     };
 
@@ -63,37 +63,49 @@ function onMediaSuccess(stream, callback, secondsOfAudio) {
 	setTimeout(() => { recorder.stop(); }, secondsOfAudio*1000);
 }
 
-function reSample(blob, targetSampleRate, onComplete) {
+function reSample(blob, targetSampleRate, secondsOfAudio, onComplete) {
 	let fileReader = new FileReader();
-	let audioBuffer;
+	let audioBuffer, arrayBuffer;
 
 	fileReader.onloadend = () => {
-		audioBuffer = fileReader.result;
+		// get array from blob
+		arrayBuffer = new Float32Array(fileReader.result);
+		
+		// create audiobuffer from array
+		var audioCtx = new AudioContext();
+		var audioBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * secondsOfAudio, audioCtx.sampleRate);
+		audioBuffer.copyToChannel(arrayBuffer, 0, 0);
+
+		// resample audiobuffer
+		var channel = audioBuffer.numberOfChannels;
+		var samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
+		var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
+		var bufferSource = offlineContext.createBufferSource();
+		bufferSource.buffer = audioBuffer;
+
+		bufferSource.connect(offlineContext.destination);
+		bufferSource.start(0);
+		offlineContext.startRendering().then(function(renderedAudioBuffer){
+			
+			// create arraybuffer from audiobuffer
+			var intermediate = new Float32Array(renderedAudioBuffer);
+			//intermediate.copyToChannel(myArrayBuffer,1,0);
+
+			onComplete(renderedAudioBuffer);
+		})
 	}
 
 	fileReader.readAsArrayBuffer(blob);
-
-    var channel = audioBuffer.numberOfChannels;
-    var samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
-
-    var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
-    var bufferSource = offlineContext.createBufferSource();
-    bufferSource.buffer = audioBuffer;
-
-    bufferSource.connect(offlineContext.destination);
-    bufferSource.start(0);
-    offlineContext.startRendering().then(function(renderedBuffer){
-        onComplete(renderedBuffer);
-    })
 }
 
 function onMediaError(e) {
     console.error('media error', e);
 }
 
-function identifyProfile(arrayBuffer){
-	var dataView = new DataView(arrayBuffer);
-	var blob = new Blob([dataView], { type: 'audio/wav' });
+function identifyProfile(data){
+	var blob = new Blob([data], { type: 'audio/wav' });
+	var url = URL.createObjectURL(blob);
+	addAudioPlayer(url);
 
 	var Ids = profileIds.map(x => x.profileId).join();
 	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
@@ -121,29 +133,31 @@ function identifyProfile(arrayBuffer){
 	request.send(blob);
 }
 
-function createProfile(arrayBuffer){
-  var dataView = new DataView(arrayBuffer);
-  var blob = new Blob([dataView], { type: 'audio/wav' });
+function createProfile(data){
+	var blob = new Blob([data], { type: 'audio/wav' });
 
-  const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
+	var url = URL.createObjectURL(blob);
+	addAudioPlayer(url);
 
-  var request = new XMLHttpRequest();
-  request.open("POST", create, true);
-  
-  request.setRequestHeader('Content-Type','application/json');
-  request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
-  request.onload = function (oEvent) {
-  	console.log('creating profile');
-  	console.log(request.responseText);
+	var request = new XMLHttpRequest();
+		request.open("POST", create, true);
 
-    var json = JSON.parse(request.responseText);
-    var profileId = json.identificationProfileId;
-	
-    enrollProfileAudio(blob, profileId);
-  };
+		request.setRequestHeader('Content-Type','application/json');
+		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
-  request.send(JSON.stringify({ 'locale' :'en-us'}));
+		request.onload = function (oEvent) {
+		console.log('creating profile');
+		console.log(request.responseText);
+
+		var json = JSON.parse(request.responseText);
+		var profileId = json.identificationProfileId;
+
+		enrollProfileAudio(blob, profileId);
+	};
+
+	request.send(JSON.stringify({ 'locale' :'en-us'}));
 }
 
 function enrollProfileAudio(blob, profileId){

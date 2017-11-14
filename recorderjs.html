@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+   pre#log{
+       height:500px;
+       overflow:auto;
+   }
+   audio {
+       display:block;
+   }
+</style>
+</head>
+<body>
+	 
+<button onclick="enrollNewProfile();">Enroll</button>
+<button onclick="startListeningForIdentification();">Identify</button>
+<pre id="log"></pre>
+
+<script src="speaker-recognition-api-demo-core.js"></script>
+<script src="recorder.js"></script>
+<script>
+
+var recorder;
+
+function onMediaSuccess(stream, callback, secondsOfAudio) {
+    var audio_context = new window.AudioContext;
+    var input = audio_context.createMediaStreamSource(stream);
+    recorder = new Recorder(input);
+    recorder.record();
+	console.log('I\'m listening...');
+    
+	setTimeout(() => { StopListening(callback); }, secondsOfAudio*1000);
+}
+
+function StopListening(callback){
+	console.log('...working...');
+    recorder && recorder.stop();
+    recorder.exportWAV(function(blob) {
+        callback(blob);
+    });
+    recorder.clear();
+}
+
+</script>
+ </body>
+</html>
