@@ -100,6 +100,25 @@ function enrollProfileAudio(blob, profileId){
   request.send(blob);
 }
 
+function enrollProfileAudioForVerification(blob, profileId){
+	const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles/'+profileId+'/enroll?shortAudio=true';
+  
+	var request = new XMLHttpRequest();
+	request.open("POST", enroll, true);
+	
+	request.setRequestHeader('Content-Type','multipart/form-data');
+	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+  
+	request.onload = function () {
+	console.log('enrolling');
+	console.log(request.responseText);
+  
+	  //console.log(location);
+	};
+  
+	request.send(blob);
+  }
+
 function pollForEnrollment(location, profileId){
 	var success = false;
 	var enrolledInterval;
@@ -194,7 +213,7 @@ function createVerificationProfile(blob){
 			var json = JSON.parse(request.responseText);
 			var profileId = json.identificationProfileId;
 
-			//enrollProfileAudio(blob, profileId);
+			enrollProfileAudioForVerification(blob, profileId);
 		};
 
 	request.send(JSON.stringify({ 'locale' :'en-us'}));
