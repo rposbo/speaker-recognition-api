@@ -4,7 +4,7 @@ function enrollNewProfile(){
 }
 
 function enrollNewVerificationProfile(){
-	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createVerificationProfilerofile, 5)}, onMediaError);
+	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createVerificationProfile, 5)}, onMediaError);
 }
 
 function startListeningForIdentification(){
