@@ -211,7 +211,7 @@ function createVerificationProfile(blob){
 
 		request.onload = function () {
 			var json = JSON.parse(request.responseText);
-			var profileId = json.identificationProfileId;
+			var profileId = json.verificationProfileId;
 
 			enrollProfileAudioForVerification(blob, profileId);
 		};
