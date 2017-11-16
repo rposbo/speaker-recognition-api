@@ -9,7 +9,7 @@ Here's a little demo for you to try out.
 ## Already got an API key?
 
  1. Paste it in here and click "go":
-    <form action="recorderjs.html" method="GET">
+    <form action="demo.html" method="GET">
     <input type="text" name="key" style="width:300px">
     <input type="submit" value="go">
     </form>

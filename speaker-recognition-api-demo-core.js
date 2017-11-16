@@ -1,6 +1,10 @@
 
-function enrollNewProfile(name){
+function enrollNewProfile(){
 	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createProfile, 15)}, onMediaError);
+}
+
+function enrollNewVerificationProfile(){
+	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createVerificationProfilerofile, 5)}, onMediaError);
 }
 
 function startListeningForIdentification(){
@@ -57,7 +61,7 @@ function createProfile(blob){
 		request.setRequestHeader('Content-Type','application/json');
 		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
-		request.onload = function (oEvent) {
+		request.onload = function () {
 		console.log('creating profile');
 		console.log(request.responseText);
 
@@ -177,6 +181,26 @@ function pollForIdentification(location){
 	}, 2000);
 }
 
+function createVerificationProfile(blob){
+	var create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles';
+
+	var request = new XMLHttpRequest();
+		request.open("POST", create, true);
+
+		request.setRequestHeader('Content-Type','application/json');
+		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+
+		request.onload = function () {
+			var json = JSON.parse(request.responseText);
+			var profileId = json.identificationProfileId;
+
+			//enrollProfileAudio(blob, profileId);
+		};
+
+	request.send(JSON.stringify({ 'locale' :'en-us'}));
+}
+
+
 function addAudioPlayer(blobUrl){
 	var log = document.getElementById('log');
 
@@ -194,7 +218,7 @@ function addAudioPlayer(blobUrl){
 	log.parentNode.insertBefore(audio, log);
 }
 
-// stolen from SO
+// found on SO: vanilla javascript queystring management
 var qs = (function(a) {
     if (a == "") return {};
     var b = {};
@@ -215,7 +239,7 @@ var key = qs['key'];
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
 var profileIds = [];
 
-// Helper functions - stolen from SO: really easy way to dump the console logs to the page
+// Helper functions - found on SO: really easy way to dump the console logs to the page
 (function () {
 	var old = console.log;
 	var logger = document.getElementById('log');
