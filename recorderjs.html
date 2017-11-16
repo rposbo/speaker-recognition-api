@@ -14,7 +14,7 @@
 </head>
 <body>
 	 
-<button onclick="enrollNewProfile();">Enroll</button>
+<button onclick="enrollNewProfile();">Enrol</button>
 <button onclick="startListeningForIdentification();">Identify</button>
 <pre id="log"></pre>
 
@@ -29,7 +29,7 @@ function onMediaSuccess(stream, callback, secondsOfAudio) {
     var input = audio_context.createMediaStreamSource(stream);
     recorder = new Recorder(input);
     recorder.record();
-	console.log('I\'m listening...');
+	console.log('I\'m listening... just start talking for a few seconds');
     
 	setTimeout(() => { StopListening(callback); }, secondsOfAudio*1000);
 }
