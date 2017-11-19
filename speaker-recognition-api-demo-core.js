@@ -1,10 +1,21 @@
 
+var thingsToRead = [
+	"Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you",
+];
+
 function enrollNewProfile(){
-	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createProfile, 15)}, onMediaError);
+	navigator.getUserMedia({audio: true}, function(stream){
+		console.log('I\'m listening... just start talking for a few seconds...');
+		console.log('Maybe read this: ' + thingsToRead[Math.floor(Math.random() * thingsToRead.length)]);
+		onMediaSuccess(stream, createProfile, 15);
+	}, onMediaError);
 }
 
 function enrollNewVerificationProfile(){
-	navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, createVerificationProfile, 5)}, onMediaError);
+	navigator.getUserMedia({audio: true}, function(stream){
+		console.log('I\'m listening... say one of the predefined phrases...');
+		onMediaSuccess(stream, createVerificationProfile, 4);
+	}, onMediaError);
 }
 
 function startListeningForIdentification(){
@@ -12,6 +23,14 @@ function startListeningForIdentification(){
 		navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, identifyProfile, 10)}, onMediaError);
 	} else {
 		console.log('No profiles enrolled yet! Click the other button...');
+	}
+}
+
+function startListeningForVerification(){
+	if (verificationProfile.profileId){
+		navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, verifyProfile, 4)}, onMediaError);
+	} else {
+		console.log('No verification profile enrolled yet! Click the other button...');
 	}
 }
 
@@ -36,13 +55,31 @@ function identifyProfile(blob){
 		console.log(request.responseText);
 		var location = request.getResponseHeader('Operation-Location');
 
-		//console.log(location);
-
 		if (location!=null) {
 			pollForIdentification(location);
 		} else {
 			console.log('Ugh. I can\'t poll, it\'s all gone wrong.');
 		}
+	};
+  
+	request.send(blob);
+}
+
+function verifyProfile(blob){
+	addAudioPlayer(blob);
+
+	const verify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verify?verificationProfileId=' + verificationProfile.profileId;
+  
+	var request = new XMLHttpRequest();
+	request.open("POST", verify, true);
+	
+	request.setRequestHeader('Content-Type','application/json');
+	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+  
+	request.onload = function () {
+		console.log('verifying profile');
+		console.log(request.responseText);
+		
 	};
   
 	request.send(blob);
@@ -101,6 +138,13 @@ function enrollProfileAudio(blob, profileId){
 
 function enrollProfileAudioForVerification(blob, profileId){
 	addAudioPlayer(blob);
+
+	if (profileId == undefined)
+	{
+		console.log("Failed to create a profile for verification; try again");
+		return;
+	}
+	
 	const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles/'+profileId+'/enroll';
   
 	var request = new XMLHttpRequest();
@@ -110,10 +154,15 @@ function enrollProfileAudioForVerification(blob, profileId){
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
   
 	request.onload = function () {
-	console.log('enrolling');
-	console.log(request.responseText);
-		// what happens here?
-		// change verification to reuse the profileID
+		console.log('enrolling');
+		console.log(request.responseText);
+
+		var json = JSON.parse(request.responseText);
+		verificationProfile.enrollmentCount = json.remainingEnrollments;
+		if (verificationProfile.enrollmentCount == 0) 
+		{
+			console.log("Verification should be enabled!")
+		}
 	};
   
 	request.send(blob);
@@ -201,6 +250,22 @@ function pollForIdentification(location){
 }
 
 function createVerificationProfile(blob){
+	
+	if (verificationProfile && verificationProfile.profileId) 
+	{
+		if (verificationProfile.enrollmentCount == 0)
+		{
+			console.log("Verification enrollment already completed");
+			return;
+		} 
+		else 
+		{
+			console.log("Verification enrollments remaining: " + verificationProfile.enrollmentCount);
+			enrollProfileAudioForVerification(blob, verificationProfile.profileId);
+			return;
+		}
+	}
+
 	var create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles';
 
 	var request = new XMLHttpRequest();
@@ -211,6 +276,7 @@ function createVerificationProfile(blob){
 		request.onload = function () {
 			var json = JSON.parse(request.responseText);
 			var profileId = json.verificationProfileId;
+			verificationProfile.profileId = profileId;
 
 			// Now we can enrol this profile with the profileId
 			enrollProfileAudioForVerification(blob, profileId);
@@ -285,7 +351,9 @@ var key = qs['key'];
 
 // Speaker Recognition API profile configuration
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
+var VerificationProfile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId; this.enrollmentCount = 3}};
 var profileIds = [];
+var verificationProfile = new VerificationProfile();
 
 // Helper functions - found on SO: really easy way to dump the console logs to the page
 (function () {

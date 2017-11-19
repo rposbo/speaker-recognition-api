@@ -29,11 +29,10 @@
 var recorder;
 
 function onMediaSuccess(stream, callback, secondsOfAudio) {
-    var audio_context = new window.AudioContext;
+    var audio_context = audio_context || new window.AudioContext;
     var input = audio_context.createMediaStreamSource(stream);
     recorder = new Recorder(input);
     recorder.record();
-	console.log('I\'m listening... just start talking for a few seconds');
     
 	setTimeout(() => { StopListening(callback); }, secondsOfAudio*1000);
 }
