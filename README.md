@@ -16,5 +16,6 @@ Here's a little demo for you to try out.
  1. Click "Enrol" and talk for 15 seconds
  1. Wait to be asked your name
  1. Repeat for another person
-1. When you've done a few people, click "Identify" and only one person talk
-1. HOPEFULLY the correct person will be identified!
+ 1. When you've done a few people, click "Identify" and only one person talk
+ 1. HOPEFULLY the correct person will be identified!
+

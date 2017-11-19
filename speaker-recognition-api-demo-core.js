@@ -20,19 +20,18 @@ function onMediaError(e) {
 }
 
 function identifyProfile(blob){
-	var url = URL.createObjectURL(blob);
-	addAudioPlayer(url);
+	addAudioPlayer(blob);
 
 	var Ids = profileIds.map(x => x.profileId).join();
-	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
+	const identify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' + Ids + '&shortAudio=true';
   
 	var request = new XMLHttpRequest();
-	request.open("POST", create, true);
+	request.open("POST", identify, true);
 	
 	request.setRequestHeader('Content-Type','application/json');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
   
-	request.onload = function (oEvent) {
+	request.onload = function () {
 		console.log('identifying profile');
 		console.log(request.responseText);
 		var location = request.getResponseHeader('Operation-Location');
@@ -50,24 +49,24 @@ function identifyProfile(blob){
 }
 
 function createProfile(blob){
-	var url = URL.createObjectURL(blob);
-	addAudioPlayer(url);
+	addAudioPlayer(blob);
 
-	const create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
+	var create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
 	var request = new XMLHttpRequest();
-		request.open("POST", create, true);
+	request.open("POST", create, true);
 
-		request.setRequestHeader('Content-Type','application/json');
-		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+	request.setRequestHeader('Content-Type','application/json');
+	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
-		request.onload = function () {
+	request.onload = function () {
 		console.log('creating profile');
 		console.log(request.responseText);
 
 		var json = JSON.parse(request.responseText);
 		var profileId = json.identificationProfileId;
 
+		// Now we can enrol this profile using the profileId
 		enrollProfileAudio(blob, profileId);
 	};
 
@@ -101,7 +100,8 @@ function enrollProfileAudio(blob, profileId){
 }
 
 function enrollProfileAudioForVerification(blob, profileId){
-	const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles/'+profileId+'/enroll?shortAudio=true';
+	addAudioPlayer(blob);
+	const enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles/'+profileId+'/enroll';
   
 	var request = new XMLHttpRequest();
 	request.open("POST", enroll, true);
@@ -112,8 +112,8 @@ function enrollProfileAudioForVerification(blob, profileId){
 	request.onload = function () {
 	console.log('enrolling');
 	console.log(request.responseText);
-  
-	  //console.log(location);
+		// what happens here?
+		// change verification to reuse the profileID
 	};
   
 	request.send(blob);
@@ -157,7 +157,7 @@ function pollForEnrollment(location, profileId){
 		};
 
 		request.send();
-	}, 2000);
+	}, 4000);
 }
 
 function pollForIdentification(location){
@@ -205,7 +205,6 @@ function createVerificationProfile(blob){
 
 	var request = new XMLHttpRequest();
 		request.open("POST", create, true);
-
 		request.setRequestHeader('Content-Type','application/json');
 		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
@@ -213,14 +212,44 @@ function createVerificationProfile(blob){
 			var json = JSON.parse(request.responseText);
 			var profileId = json.verificationProfileId;
 
+			// Now we can enrol this profile with the profileId
 			enrollProfileAudioForVerification(blob, profileId);
 		};
 
 	request.send(JSON.stringify({ 'locale' :'en-us'}));
 }
 
+function BurnItAll(){
+	// brute force delete everything - keep retrying until it's empty
+	var listing = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
 
-function addAudioPlayer(blobUrl){
+	var request = new XMLHttpRequest();
+	request.open("GET", listing, true);
+
+	request.setRequestHeader('Content-Type','multipart/form-data');
+	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+
+	request.onload = function () {
+		var json = JSON.parse(request.responseText);
+		for(var x in json){
+			if (json[x]['identificationProfileId'] == undefined) {continue;}
+			var request2 = new XMLHttpRequest();
+			request2.open("DELETE", listing + '/'+ json[x]['identificationProfileId'], true);
+
+			request2.setRequestHeader('Content-Type','multipart/form-data');
+			request2.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+			request2.onload = function(){
+				console.log(request2.responseText);
+			};
+			request2.send();
+		}
+	};
+
+	request.send();
+}
+
+function addAudioPlayer(blob){	
+	var url = URL.createObjectURL(blob);
 	var log = document.getElementById('log');
 
 	var audio = document.querySelector('#replay');
@@ -231,7 +260,7 @@ function addAudioPlayer(blobUrl){
 	audio.setAttribute('controls','controls');
 
 	var source = document.createElement('source');
-	source.src = blobUrl;
+	source.src = url;
 
 	audio.appendChild(source);
 	log.parentNode.insertBefore(audio, log);
