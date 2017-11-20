@@ -20,6 +20,7 @@ function enrollNewVerificationProfile(){
 
 function startListeningForIdentification(){
 	if (profileIds.length > 0 ){
+		console.log('I\'m listening... just start talking for a few seconds...');
 		navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, identifyProfile, 10)}, onMediaError);
 	} else {
 		console.log('No profiles enrolled yet! Click the other button...');
@@ -28,6 +29,7 @@ function startListeningForIdentification(){
 
 function startListeningForVerification(){
 	if (verificationProfile.profileId){
+		console.log('I\'m listening... say your predefined phrase...');
 		navigator.getUserMedia({audio: true}, function(stream){onMediaSuccess(stream, verifyProfile, 4)}, onMediaError);
 	} else {
 		console.log('No verification profile enrolled yet! Click the other button...');
@@ -158,8 +160,8 @@ function enrollProfileAudioForVerification(blob, profileId){
 		console.log(request.responseText);
 
 		var json = JSON.parse(request.responseText);
-		verificationProfile.enrollmentCount = json.remainingEnrollments;
-		if (verificationProfile.enrollmentCount == 0) 
+		verificationProfile.remainingEnrollments = json.remainingEnrollments;
+		if (verificationProfile.remainingEnrollments == 0) 
 		{
 			console.log("Verification should be enabled!")
 		}
@@ -168,7 +170,8 @@ function enrollProfileAudioForVerification(blob, profileId){
 	request.send(blob);
   }
 
-function pollForEnrollment(location, profileId){
+
+  function pollForEnrollment(location, profileId){
 	var success = false;
 	var enrolledInterval;
 
@@ -253,14 +256,14 @@ function createVerificationProfile(blob){
 	
 	if (verificationProfile && verificationProfile.profileId) 
 	{
-		if (verificationProfile.enrollmentCount == 0)
+		if (verificationProfile.remainingEnrollments == 0)
 		{
 			console.log("Verification enrollment already completed");
 			return;
 		} 
 		else 
 		{
-			console.log("Verification enrollments remaining: " + verificationProfile.enrollmentCount);
+			console.log("Verification enrollments remaining: " + verificationProfile.remainingEnrollments);
 			enrollProfileAudioForVerification(blob, verificationProfile.profileId);
 			return;
 		}
@@ -285,9 +288,9 @@ function createVerificationProfile(blob){
 	request.send(JSON.stringify({ 'locale' :'en-us'}));
 }
 
-function BurnItAll(){
+function BurnItAll(mode = 'identification'){
 	// brute force delete everything - keep retrying until it's empty
-	var listing = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
+	var listing = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/' + mode + 'Profiles';
 
 	var request = new XMLHttpRequest();
 	request.open("GET", listing, true);
@@ -298,9 +301,9 @@ function BurnItAll(){
 	request.onload = function () {
 		var json = JSON.parse(request.responseText);
 		for(var x in json){
-			if (json[x]['identificationProfileId'] == undefined) {continue;}
+			if (json[x][mode + 'ProfileId'] == undefined) {continue;}
 			var request2 = new XMLHttpRequest();
-			request2.open("DELETE", listing + '/'+ json[x]['identificationProfileId'], true);
+			request2.open("DELETE", listing + '/'+ json[x][mode + 'ProfileId'], true);
 
 			request2.setRequestHeader('Content-Type','multipart/form-data');
 			request2.setRequestHeader('Ocp-Apim-Subscription-Key', key);
@@ -351,7 +354,7 @@ var key = qs['key'];
 
 // Speaker Recognition API profile configuration
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
-var VerificationProfile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId; this.enrollmentCount = 3}};
+var VerificationProfile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId; this.remainingEnrollments = 3}};
 var profileIds = [];
 var verificationProfile = new VerificationProfile();
 
