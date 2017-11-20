@@ -27,9 +27,10 @@
 <script>
 
 var recorder;
+var audio_context;
 
 function onMediaSuccess(stream, callback, secondsOfAudio) {
-    var audio_context = audio_context || new window.AudioContext;
+    audio_context = audio_context || new window.AudioContext;
     var input = audio_context.createMediaStreamSource(stream);
     recorder = new Recorder(input);
     recorder.record();

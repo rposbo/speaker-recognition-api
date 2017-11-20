@@ -70,7 +70,7 @@ function identifyProfile(blob){
 function verifyProfile(blob){
 	addAudioPlayer(blob);
 
-	const verify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verify?verificationProfileId=' + verificationProfile.profileId;
+	var verify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verify?verificationProfileId=' + verificationProfile.profileId;
   
 	var request = new XMLHttpRequest();
 	request.open("POST", verify, true);
@@ -80,8 +80,7 @@ function verifyProfile(blob){
   
 	request.onload = function () {
 		console.log('verifying profile');
-		console.log(request.responseText);
-		
+		console.log(request.responseText);		
 	};
   
 	request.send(blob);
