@@ -361,8 +361,14 @@ var VerificationProfile = class { constructor (name, profileId) { this.name = na
 var profileIds = [];
 var verificationProfile = new VerificationProfile();
 
-// Helper functions - found on SO: really easy way to dump the console logs to the page
 (function () {
+	// stop being Chrome-centric!
+	navigator.getUserMedia = ( navigator.getUserMedia ||
+                       navigator.webkitGetUserMedia ||
+                       navigator.mozGetUserMedia ||
+                       navigator.msGetUserMedia);
+
+	// Helper functions - found on SO: really easy way to dump the console logs to the page	
 	var old = console.log;
 	var logger = document.getElementById('log');
 	var isScrolledToBottom = logger.scrollHeight - logger.clientHeight <= logger.scrollTop + 1;
