@@ -25,10 +25,11 @@
 </head>
 <body>
 	 
-<button onclick="enrollNewProfile();">Enrol for Identification</button>
+<button onclick="enrollNewProfile();">Create Identification Profile</button>
 <button onclick="startListeningForIdentification();">Identify</button>
 <hr>
-<button onclick="enrollNewVerificationProfile();">Enrol for Verification</button>
+<button onclick="getVerificationPhrases();">List Verification phrases</button>
+<button onclick="enrollNewVerificationProfile();">Create Verification Profile</button>
 <button onclick="startListeningForVerification();">Verify</button>
 <hr>
 <pre id="log"></pre>
@@ -47,6 +48,10 @@ function onMediaSuccess(stream, callback, secondsOfAudio) {
     recorder.record();
     
 	setTimeout(() => { StopListening(callback); }, secondsOfAudio*1000);
+}
+
+function onMediaError(e) {
+    console.error('media error', e);
 }
 
 function StopListening(callback){
