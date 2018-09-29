@@ -9,6 +9,10 @@ By using your browser's built-in audio recording capabilities, and a custom vers
 
 Super cool stuff.
 
+You can view the demo itself here:
+
+* https://rposbo.github.io/speaker-recognition-api/
+
 Articles that support this are over here:
 
 * https://www.robinosborne.co.uk/tag/speech-recognition/
