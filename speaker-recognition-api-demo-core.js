@@ -234,12 +234,11 @@ function pollForEnrollment(location, profileId){
 			{
 				// keep polling
 				console.log('Not done yet..');
-				console.log(json);
 			}
 		};
 
 		request.send();
-	}, 4000);
+	}, 1000);
 }
 
 // 2. Start the browser listening, listen for 10 seconds, pass the audio stream to "identifyProfile"
@@ -328,7 +327,7 @@ function pollForIdentification(location){
 		};
 
 		request.send();
-	}, 2000);
+	}, 500);
 }
 
 //-- If it looks like the profiles are messed up, kick off "BurnItAll" to delete all profile data

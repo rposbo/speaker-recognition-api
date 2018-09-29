@@ -1,20 +1,18 @@
 # Speaker Recognition API
 
-Here's a little demo for you to try out.
+This is a simple demo of the Microsoft Cognitive Services Speaker Recognition APIs:
 
-## No API key yet?
+1. Speaker Verification
+1. Speaker Identification
 
-1. Go and get your cognitive services API key
+By using your browser's built-in audio recording capabilities, and a custom version of the fantastic RecorderJS to convert the raw audio into the format required by Cognitive Services, you can easily have a play around with using your voice as a form of verification and also to identify who is talking out of a group of people.
 
-## Already got an API key?
+Super cool stuff.
 
- 1. Paste it in here and click "go":
-    <form action="demo.html" method="GET">
-    <input type="text" name="key" style="width:300px">
-    <input type="submit" value="go">
-    </form>
- 1. Click "Enrol" and talk for 15 seconds
- 1. Wait to be asked your name
- 1. Repeat for another person
- 1. When you've done a few people, click "Identify" and only one person talk
- 1. HOPEFULLY the correct person will be identified!
+Articles that support this are over here:
+
+* https://www.robinosborne.co.uk/tag/speech-recognition/
+
+Also you can view the LDN BotFramework Meetup session I gave using this over on YouTube:
+
+* https://youtu.be/dseEDOsWzts?t=28m48s
