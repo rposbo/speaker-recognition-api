@@ -2,14 +2,13 @@
 //-- Speaker Verification methods
 // Get the supported verification phrases
 function getVerificationPhrases() {
-	var phrases = 
-		'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationPhrases?locale=en-US';
+	var phrases = `${baseApi}/verificationPhrases?locale=en-US`;
 
 	var request = new XMLHttpRequest();
 	request.open("GET", phrases, true);
 
-	request.setRequestHeader('Content-Type','multipart/form-data');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+
 	request.onload = function(){ console.log(request.responseText); };
 	request.send();
 }
@@ -41,7 +40,7 @@ function createVerificationProfile(blob){
 		}
 	}
 
-	var create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles';
+	var create = `${baseApi}/verificationProfiles`;
 
 	var request = new XMLHttpRequest();
 	request.open("POST", create, true);
@@ -58,7 +57,7 @@ function createVerificationProfile(blob){
 		enrollProfileAudioForVerification(blob, profileId);
 	};
 
-	request.send(JSON.stringify({ 'locale' :'en-us'}));
+	request.send(JSON.stringify({'locale' :'en-us'}));
 }
 
 // enrollProfileAudioForVerification enrolls the recorded audio with the new profile Id
@@ -71,12 +70,12 @@ function enrollProfileAudioForVerification(blob, profileId){
 		return;
 	}
 	
-	var enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verificationProfiles/'+profileId+'/enroll';
+	var enroll = `${baseApi}/verificationProfiles/${profileId}/enroll`;
   
 	var request = new XMLHttpRequest();
 	request.open("POST", enroll, true);
 	
-	request.setRequestHeader('Content-Type','multipart/form-data');
+	//request.setRequestHeader('Content-Type','multipart/form-data');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
   
 	request.onload = function () {
@@ -110,7 +109,7 @@ function startListeningForVerification(){
 function verifyProfile(blob){
 	addAudioPlayer(blob);
 
-	var verify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/verify?verificationProfileId=' + verificationProfile.profileId;
+	var verify = `${baseApi}/verify?verificationProfileId=${verificationProfile.profileId}`;
   
 	var request = new XMLHttpRequest();
 	request.open("POST", verify, true);
@@ -143,7 +142,7 @@ function enrollNewProfile(){
 function createProfile(blob){
 	addAudioPlayer(blob);
 
-	var create = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles';
+	var create = `${baseApi}/identificationProfiles`;
 
 	var request = new XMLHttpRequest();
 	request.open("POST", create, true);
@@ -167,7 +166,7 @@ function createProfile(blob){
 
 // enrollProfileAudio enrolls the recorded audio with the new profile Id, polling the status
 function enrollProfileAudio(blob, profileId){
-  var enroll = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles/'+profileId+'/enroll?shortAudio=true';
+  var enroll = `${baseApi}/identificationProfiles/${profileId}/enroll?shortAudio=true`;
 
   var request = new XMLHttpRequest();
   request.open("POST", enroll, true);
@@ -259,9 +258,7 @@ function identifyProfile(blob){
 	// comma delimited list of profile IDs we're interested in comparing against
 	var Ids = profileIds.map(x => x.profileId).join();
 
-	var identify = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/identify?identificationProfileIds=' 
-		+ Ids 
-		+ '&shortAudio=true';
+	var identify = `${baseApi}/identify?identificationProfileIds=${Ids}&shortAudio=true`;
   
 	var request = new XMLHttpRequest();
 	request.open("POST", identify, true);
@@ -296,8 +293,6 @@ function pollForIdentification(location){
 	{
 		var request = new XMLHttpRequest();
 		request.open("GET", location, true);
-
-		request.setRequestHeader('Content-Type','multipart/form-data');
 		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
 		request.onload = function()
@@ -335,12 +330,11 @@ function pollForIdentification(location){
 // BurnItAll('verification') - clear verification profiles
 function BurnItAll(mode = 'identification'){
 	// brute force delete everything - keep retrying until it's empty
-	var listing = 'https://westus.api.cognitive.microsoft.com/spid/v1.0/' + mode + 'Profiles';
+	var listing = `${baseApi}/${mode}Profiles`;
 
 	var request = new XMLHttpRequest();
 	request.open("GET", listing, true);
 
-	request.setRequestHeader('Content-Type','multipart/form-data');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
 	request.onload = function () {
@@ -406,6 +400,7 @@ var qs = (function(a) {
 
 // Get the Cognitive Services key from the querystring
 var key = qs['key'];
+var baseApi = qs['endpoint'];
 
 // Speaker Recognition API profile configuration - constructs to make management easier
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
