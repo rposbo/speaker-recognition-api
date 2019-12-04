@@ -74,10 +74,7 @@ function enrollProfileAudioForVerification(blob, profileId){
   
 	var request = new XMLHttpRequest();
 	request.open("POST", enroll, true);
-	
-	//request.setRequestHeader('Content-Type','multipart/form-data');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
-  
 	request.onload = function () {
 		console.log('enrolling');
 		console.log(request.responseText);
@@ -170,10 +167,7 @@ function enrollProfileAudio(blob, profileId){
 
   var request = new XMLHttpRequest();
   request.open("POST", enroll, true);
-  
-  request.setRequestHeader('Content-Type','multipart/form-data');
   request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
-
   request.onload = function () {
   	console.log('enrolling');
 	console.log(request.responseText);
@@ -201,10 +195,7 @@ function pollForEnrollment(location, profileId){
 	{
 		var request = new XMLHttpRequest();
 		request.open("GET", location, true);
-
-		request.setRequestHeader('Content-Type','multipart/form-data');
 		request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
-
 		request.onload = function()
 		{
 			console.log('getting status');
@@ -263,7 +254,7 @@ function identifyProfile(blob){
 	var request = new XMLHttpRequest();
 	request.open("POST", identify, true);
 	
-	request.setRequestHeader('Content-Type','application/json');
+	//request.setRequestHeader('Content-Type','application/json');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
   
 	request.onload = function () {
@@ -343,8 +334,6 @@ function BurnItAll(mode = 'identification'){
 			if (json[x][mode + 'ProfileId'] == undefined) {continue;}
 			var request2 = new XMLHttpRequest();
 			request2.open("DELETE", listing + '/'+ json[x][mode + 'ProfileId'], true);
-
-			request2.setRequestHeader('Content-Type','multipart/form-data');
 			request2.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 			request2.onload = function(){
 				console.log(request2.responseText);
