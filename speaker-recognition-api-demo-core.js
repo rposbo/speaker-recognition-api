@@ -2,10 +2,8 @@
 //-- Speaker Verification methods
 // Get the supported verification phrases
 function getVerificationPhrases() {
-	var phrases = `${baseApi}/verificationPhrases?locale=en-US`;
-
 	var request = new XMLHttpRequest();
-	request.open("GET", phrases, true);
+	request.open("GET", phrasesEndpoint, true);
 
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
@@ -27,30 +25,28 @@ function createVerificationProfile(blob){
 	// just check if we've already fully enrolled this profile
 	if (verificationProfile && verificationProfile.profileId) 
 	{
-		if (verificationProfile.remainingEnrollments == 0)
+		if (verificationProfile.remainingEnrollmentsCount == 0)
 		{
 			console.log("Verification enrollment already completed");
 			return;
 		} 
 		else 
 		{
-			console.log("Verification enrollments remaining: " + verificationProfile.remainingEnrollments);
+			console.log("Verification enrollments remaining: " + verificationProfile.remainingEnrollmentsCount);
 			enrollProfileAudioForVerification(blob, verificationProfile.profileId);
 			return;
 		}
 	}
 
-	var create = `${baseApi}/verificationProfiles`;
-
 	var request = new XMLHttpRequest();
-	request.open("POST", create, true);
+	request.open("POST", createVerificationProfileEndpoint, true);
 	request.setRequestHeader('Content-Type','application/json');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
 	request.onload = function () {
 		console.log(request.responseText);
 		var json = JSON.parse(request.responseText);
-		var profileId = json.verificationProfileId;
+		var profileId = json.profileId;
 		verificationProfile.profileId = profileId;
 
 		// Now we can enrol this profile with the profileId
@@ -69,11 +65,9 @@ function enrollProfileAudioForVerification(blob, profileId){
 		console.log("Failed to create a profile for verification; try again");
 		return;
 	}
-	
-	var enroll = `${baseApi}/verificationProfiles/${profileId}/enroll`;
-  
+	  
 	var request = new XMLHttpRequest();
-	request.open("POST", enroll, true);
+	request.open("POST", enrollVerificationProfileEndpoint(profileId), true);
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 	request.onload = function () {
 		console.log('enrolling');
@@ -82,8 +76,8 @@ function enrollProfileAudioForVerification(blob, profileId){
 		var json = JSON.parse(request.responseText);
 
 		// need 3 successful enrolled chunks of audio per profile id
-		verificationProfile.remainingEnrollments = json.remainingEnrollments;
-		if (verificationProfile.remainingEnrollments == 0) 
+		verificationProfile.remainingEnrollmentsCount = json.remainingEnrollmentsCount;
+		if (verificationProfile.remainingEnrollmentsCount == 0) 
 		{
 			console.log("Verification should be enabled!")
 		}
@@ -105,11 +99,9 @@ function startListeningForVerification(){
 // 3. Take the audio and send it to the verification endpoint for the current profile Id
 function verifyProfile(blob){
 	addAudioPlayer(blob);
-
-	var verify = `${baseApi}/verify?verificationProfileId=${verificationProfile.profileId}`;
   
 	var request = new XMLHttpRequest();
-	request.open("POST", verify, true);
+	request.open("POST", verifyProfileEndpoint(verificationProfile.profileId), true);
 	
 	request.setRequestHeader('Content-Type','application/json');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
@@ -139,10 +131,8 @@ function enrollNewProfile(){
 function createProfile(blob){
 	addAudioPlayer(blob);
 
-	var create = `${baseApi}/identificationProfiles`;
-
 	var request = new XMLHttpRequest();
-	request.open("POST", create, true);
+	request.open("POST", createIdentificationProfileEndpoint, true);
 
 	request.setRequestHeader('Content-Type','application/json');
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
@@ -152,7 +142,7 @@ function createProfile(blob){
 		console.log(request.responseText);
 
 		var json = JSON.parse(request.responseText);
-		var profileId = json.identificationProfileId;
+		var profileId = json.profileId;
 
 		// Now we can enrol this profile using the profileId
 		enrollProfileAudio(blob, profileId);
@@ -163,26 +153,23 @@ function createProfile(blob){
 
 // enrollProfileAudio enrolls the recorded audio with the new profile Id, polling the status
 function enrollProfileAudio(blob, profileId){
-  var enroll = `${baseApi}/identificationProfiles/${profileId}/enroll?shortAudio=true`;
-
+  
   var request = new XMLHttpRequest();
-  request.open("POST", enroll, true);
+  request.open("POST", enrollIdentificationProfileEndpoint(profileId), true);
   request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
   request.onload = function () {
   	console.log('enrolling');
 	console.log(request.responseText);
 	
-	// The response contains a location to poll for status
-    var location = request.getResponseHeader('Operation-Location');
-
-	if (location!=null) {
-		// ping that location to get the enrollment status
-    	pollForEnrollment(location, profileId);
+	if (request.status==200 || request.status==201) {
+		const location = enrollIdentificationProfileStatusEndpoint(profileId);
+		pollForEnrollment(location, profileId);
 	} else {
-		console.log('Ugh. I can\'t poll, it\'s all gone wrong.');
+		console.log(`Failed to submit for enrollment: got a ${request.status} response code.`);
+		var json = JSON.parse(request.responseText);
+		console.log(`${json.error.code}: ${json.error.message}`);
 	}
-  };
-
+  };  
   request.send(blob);
 }
 
@@ -202,7 +189,7 @@ function pollForEnrollment(location, profileId){
 			console.log(request.responseText);
 
 			var json = JSON.parse(request.responseText);
-			if (json.status == 'succeeded' && json.processingResult.enrollmentStatus == 'Enrolled')
+			if (json.enrollmentStatus == 'Enrolled')
 			{
 				// Woohoo! The audio was enrolled successfully! 
 
@@ -214,11 +201,6 @@ function pollForEnrollment(location, profileId){
 				var name = window.prompt('Who was that talking?');
 				profileIds.push(new Profile(name, profileId));
 				console.log(profileId + ' is now mapped to ' + name);
-			}
-			else if(json.status == 'succeeded' && json.processingResult.remainingEnrollmentSpeechTime > 0) {
-				// stop polling, the audio wasn't viable
-				clearInterval(enrolledInterval);
-				console.log('That audio wasn\'t long enough to use');
 			}
 			else 
 			{
@@ -248,27 +230,28 @@ function identifyProfile(blob){
 
 	// comma delimited list of profile IDs we're interested in comparing against
 	var Ids = profileIds.map(x => x.profileId).join();
-
-	var identify = `${baseApi}/identify?identificationProfileIds=${Ids}&shortAudio=true`;
   
 	var request = new XMLHttpRequest();
-	request.open("POST", identify, true);
-	
-	//request.setRequestHeader('Content-Type','application/json');
+	request.open("POST", identifyProfileEndpoint(Ids), true);
 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
-  
 	request.onload = function () {
 		console.log('identifying profile');
 		console.log(request.responseText);
+		var json = JSON.parse(request.responseText);
 
-		// The response contains a location to poll for status
-		var location = request.getResponseHeader('Operation-Location');
-
-		if (location!=null) {
+		if (request.status == 200) {
 			// ping that location to get the identification status
-			pollForIdentification(location);
+			//pollForIdentification(location);
+			var speaker = profileIds.filter(function(p){return p.profileId == json.identifiedProfile.profileId});
+
+			if (speaker != null && speaker.length > 0){
+				console.log('I think ' + speaker[0].name + ' was talking');
+			} else {
+				console.log('I couldn\'t tell who was talking. So embarrassing.');
+			}
 		} else {
-			console.log('Ugh. I can\'t poll, it\'s all gone wrong.');
+			console.log(`Failed to submit for identification: got a ${request.status} response code.`);
+			console.log(`${json.error.code}: ${json.error.message}`);
 		}
 	};
   
@@ -317,33 +300,34 @@ function pollForIdentification(location){
 }
 
 //-- If it looks like the profiles are messed up, kick off "BurnItAll" to delete all profile data
+
 // BurnItAll('identification') - clear identification profiles
 // BurnItAll('verification') - clear verification profiles
-function BurnItAll(mode = 'identification'){
-	// brute force delete everything - keep retrying until it's empty
-	var listing = `${baseApi}/${mode}Profiles`;
+// function BurnItAll(mode = 'identification'){
+// 	// brute force delete everything - keep retrying until it's empty
+// 	var listing = `${baseApi}/${mode}Profiles`;
 
-	var request = new XMLHttpRequest();
-	request.open("GET", listing, true);
+// 	var request = new XMLHttpRequest();
+// 	request.open("GET", listing, true);
 
-	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+// 	request.setRequestHeader('Ocp-Apim-Subscription-Key', key);
 
-	request.onload = function () {
-		var json = JSON.parse(request.responseText);
-		for(var x in json){
-			if (json[x][mode + 'ProfileId'] == undefined) {continue;}
-			var request2 = new XMLHttpRequest();
-			request2.open("DELETE", listing + '/'+ json[x][mode + 'ProfileId'], true);
-			request2.setRequestHeader('Ocp-Apim-Subscription-Key', key);
-			request2.onload = function(){
-				console.log(request2.responseText);
-			};
-			request2.send();
-		}
-	};
+// 	request.onload = function () {
+// 		var json = JSON.parse(request.responseText);
+// 		for(var x in json){
+// 			if (json[x][mode + 'ProfileId'] == undefined) {continue;}
+// 			var request2 = new XMLHttpRequest();
+// 			request2.open("DELETE", listing + '/'+ json[x][mode + 'ProfileId'], true);
+// 			request2.setRequestHeader('Ocp-Apim-Subscription-Key', key);
+// 			request2.onload = function(){
+// 				console.log(request2.responseText);
+// 			};
+// 			request2.send();
+// 		}
+// 	};
 
-	request.send();
-}
+// 	request.send();
+// }
 
 // This method adds the recorded audio to the page so you can listen to it
 function addAudioPlayer(blob){	
@@ -390,6 +374,17 @@ var qs = (function(a) {
 // Get the Cognitive Services key from the querystring
 var key = qs['key'];
 var baseApi = qs['endpoint'];
+
+// Build the API endpoints
+const phrasesEndpoint = `${baseApi}/speaker/verification/v2.0/text-dependent/phrases/en-US`;
+const createVerificationProfileEndpoint = `${baseApi}/speaker/verification/v2.0/text-dependent/profiles`;
+const enrollVerificationProfileEndpoint = (profileId) => `${baseApi}/speaker/verification/v2.0/text-dependent/profiles/${profileId}/enrollments`;
+const verifyProfileEndpoint = (profileId) => `${baseApi}/speaker/verification/v2.0/text-dependent/profiles/${profileId}/verify`;
+
+const createIdentificationProfileEndpoint = `${baseApi}/speaker/identification/v2.0/text-independent/profiles`;
+const enrollIdentificationProfileEndpoint = (profileId) => `${baseApi}/speaker/identification/v2.0/text-independent/profiles/${profileId}/enrollments?ignoreMinLength=true`;
+const enrollIdentificationProfileStatusEndpoint = (profileId) => `${baseApi}/speaker/identification/v2.0/text-independent/profiles/${profileId}`;
+const identifyProfileEndpoint = (Ids) => `${baseApi}/speaker/identification/v2.0/text-independent/profiles/identifySingleSpeaker?profileIds=${Ids}&ignoreMinLength=true`;
 
 // Speaker Recognition API profile configuration - constructs to make management easier
 var Profile = class { constructor (name, profileId) { this.name = name; this.profileId = profileId;}};
