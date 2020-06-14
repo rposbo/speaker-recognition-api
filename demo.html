@@ -33,10 +33,16 @@
 <button onclick="enrollNewVerificationProfile();">Create Verification Profile</button>
 <button onclick="startListeningForVerification();">Verify</button>
 <hr>
+<button onclick="enrollNewTextIndependentVerificationProfile();">Create Text Independent Profile</button>
+<button onclick="startListeningForTextIndependentVerification();">Text Independent Verify</button>
+<hr>
 <pre id="log"></pre>
 
-<script src="speaker-recognition-api-demo-core.js"></script>
-<script src="recorder.js"></script>
+<script src="src/speaker-recognition-api-demo-core.js"></script>
+<script src="src/speaker-recognition-api-demo-verification-textdependent.js"></script>
+<script src="src/speaker-recognition-api-demo-verification-textindependent.js"></script>
+<script src="src/speaker-recognition-api-demo-identification.js"></script>
+<script src="src/recorder-cognitiveservices-rposbo.js"></script>
 <script>
 
 var recorder;
